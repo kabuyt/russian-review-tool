@@ -15,7 +15,7 @@ import { useEffect, useMemo, useState } from "react";
 import { mistakes } from "./data";
 import { extractRussianPhrases, speakRussian } from "./language";
 import { exportHistory, loadState, saveState, createSrsRecord } from "./storage";
-import { gradeSrs, isDue } from "./srs";
+import { formatDue, gradeSrs, isDue } from "./srs";
 import type { DailyReview, HistoryEntry, ReviewMistake, StoredState, StudyItem, TabId } from "./types";
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof BookOpen }> = [
@@ -171,6 +171,7 @@ function App() {
   const choiceItem = state.items[choiceIndex % state.items.length];
   const listenItem = state.items[listenIndex % state.items.length];
   const speakItem = state.items[speakIndex % state.items.length];
+  const currentSrsItem = dueItems[0] ?? state.items[0];
   const wrongItem = wrongItems[0] ?? dueItems[0] ?? state.items[0];
   const correctCount = state.history.filter((entry) => entry.correct).length;
   const todayCount = state.history.filter(
@@ -264,6 +265,16 @@ function App() {
       typedAnswer: "復習した",
       correct: true,
     });
+  }
+
+  function gradeCurrentSrs(quality: "again" | "hard" | "good" | "easy") {
+    const label = {
+      again: "もう一回",
+      hard: "むずかしい",
+      good: "できた",
+      easy: "簡単",
+    }[quality];
+    gradeItem(currentSrsItem, quality, "SRS review", label);
   }
 
   function generateFromConversation() {
@@ -392,6 +403,14 @@ function App() {
       </header>
 
       <div className="utility-nav" aria-label="補助メニュー">
+        <button
+          className={tab === "srs" ? "utility-button active" : "utility-button"}
+          type="button"
+          onClick={() => setTab("srs")}
+        >
+          <RotateCcw size={16} />
+          SRS
+        </button>
         <button
           className={tab === "conversation" ? "utility-button active" : "utility-button"}
           type="button"
@@ -625,6 +644,44 @@ function App() {
                 </>
               )}
             </div>
+          </section>
+        )}
+
+        {tab === "srs" && (
+          <section className="two-column">
+            <div className="practice-card drill-card">
+              <div className="label">SRS 4段階復習</div>
+              <h2 lang="ru">{currentSrsItem.ru}</h2>
+              <p className="meaning-line">JP: {currentSrsItem.ja}</p>
+              <p className="meaning-line">EN: {currentSrsItem.en}</p>
+              <button className="wide-button" type="button" onClick={() => speakRussian(currentSrsItem.ru)}>
+                <Volume2 size={20} />
+                音声を聞く
+              </button>
+              <div className="grade-grid">
+                <button className="bad" type="button" onClick={() => gradeCurrentSrs("again")}>
+                  もう一回
+                </button>
+                <button className="ghost" type="button" onClick={() => gradeCurrentSrs("hard")}>
+                  むずかしい
+                </button>
+                <button className="good" type="button" onClick={() => gradeCurrentSrs("good")}>
+                  できた
+                </button>
+                <button type="button" onClick={() => gradeCurrentSrs("easy")}>
+                  簡単
+                </button>
+              </div>
+            </div>
+            <aside className="quiet-panel">
+              <div className="label">復習予定</div>
+              {state.items.slice(0, 12).map((item) => (
+                <div className="schedule-row" key={item.id}>
+                  <span lang="ru">{item.ru}</span>
+                  <b>{formatDue(state.srs[item.id]?.dueAt ?? new Date().toISOString())}</b>
+                </div>
+              ))}
+            </aside>
           </section>
         )}
 

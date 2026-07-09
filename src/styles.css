@@ -608,6 +608,14 @@ main {
     grid-template-columns: 1fr;
   }
 
+  .grade-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .grade-grid button {
+    min-height: 58px;
+  }
+
   h1 {
     font-size: 2rem;
   }
