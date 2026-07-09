@@ -16,7 +16,7 @@ import { mistakes } from "./data";
 import { extractRussianPhrases, speakRussian } from "./language";
 import { exportHistory, loadState, saveState, createSrsRecord } from "./storage";
 import { gradeSrs, isDue } from "./srs";
-import type { HistoryEntry, StoredState, StudyItem, TabId } from "./types";
+import type { DailyReview, HistoryEntry, ReviewMistake, StoredState, StudyItem, TabId } from "./types";
 
 const tabs: Array<{ id: TabId; label: string; icon: typeof BookOpen }> = [
   { id: "cards", label: "カード", icon: BookOpen },
@@ -50,6 +50,91 @@ function makeChoices(item: StudyItem, items: StudyItem[], field: "ja" | "ru") {
     .map((choice) => choice.value);
 }
 
+type ReviewJsonEntry =
+  | string
+  | {
+      ru?: unknown;
+      russian?: unknown;
+      text?: unknown;
+      word?: unknown;
+      phrase?: unknown;
+      ja?: unknown;
+      japanese?: unknown;
+      meaning?: unknown;
+      translation?: unknown;
+      en?: unknown;
+      english?: unknown;
+      note?: unknown;
+    };
+
+type ReviewJsonMistake =
+  | string
+  | {
+      title?: unknown;
+      bad?: unknown;
+      wrong?: unknown;
+      incorrect?: unknown;
+      good?: unknown;
+      correct?: unknown;
+      note?: unknown;
+      explanation?: unknown;
+    };
+
+function asText(value: unknown) {
+  return typeof value === "string" ? value.trim() : "";
+}
+
+function itemText(entry: ReviewJsonEntry) {
+  if (typeof entry === "string") return entry.trim();
+  return asText(entry.ru) || asText(entry.russian) || asText(entry.text) || asText(entry.word) || asText(entry.phrase);
+}
+
+function itemJa(entry: ReviewJsonEntry, fallback: string) {
+  if (typeof entry === "string") return fallback;
+  return asText(entry.ja) || asText(entry.japanese) || asText(entry.meaning) || asText(entry.translation) || fallback;
+}
+
+function itemEn(entry: ReviewJsonEntry) {
+  if (typeof entry === "string") return "Imported from ChatGPT JSON";
+  return asText(entry.en) || asText(entry.english) || asText(entry.note) || "Imported from ChatGPT JSON";
+}
+
+function parseMistake(entry: ReviewJsonMistake, index: number, date: string): ReviewMistake {
+  if (typeof entry === "string") {
+    return {
+      title: `JSONミス ${index + 1}`,
+      bad: entry.trim(),
+      good: "",
+      note: "ChatGPT JSONから追加",
+      date,
+    };
+  }
+
+  return {
+    title: asText(entry.title) || `JSONミス ${index + 1}`,
+    bad: asText(entry.bad) || asText(entry.wrong) || asText(entry.incorrect),
+    good: asText(entry.good) || asText(entry.correct),
+    note: asText(entry.note) || asText(entry.explanation) || "ChatGPT JSONから追加",
+    date,
+  };
+}
+
+function buildJsonItem(entry: ReviewJsonEntry, kind: "word" | "phrase", date: string, index: number): StudyItem | null {
+  const ru = itemText(entry);
+  if (!ru) return null;
+  const id = `json-${date}-${kind}-${stableHash(`${ru}-${index}`)}`;
+  return {
+    id,
+    ru,
+    ja: itemJa(entry, `${date}の${kind === "word" ? "単語" : "フレーズ"}`),
+    en: itemEn(entry),
+    source: "json",
+    createdAt: new Date().toISOString(),
+    reviewDate: date,
+    itemType: kind,
+  };
+}
+
 function App() {
   const [tab, setTab] = useState<TabId>("cards");
   const [state, setState] = useState<StoredState>(() => loadState());
@@ -59,6 +144,8 @@ function App() {
   const [speakIndex, setSpeakIndex] = useState(0);
   const [speakOpen, setSpeakOpen] = useState(false);
   const [feedback, setFeedback] = useState<{ itemId: string; correct: boolean; value: string } | null>(null);
+  const [reviewJson, setReviewJson] = useState("");
+  const [jsonMessage, setJsonMessage] = useState<{ kind: "ok" | "error"; text: string } | null>(null);
 
   useEffect(() => {
     saveState(state);
@@ -89,6 +176,14 @@ function App() {
   const todayCount = state.history.filter(
     (entry) => new Date(entry.reviewedAt).toDateString() === new Date().toDateString(),
   ).length;
+  const importedMistakes = useMemo(
+    () => state.dailyReviews.flatMap((review) => review.mistakes).slice(0, 12),
+    [state.dailyReviews],
+  );
+  const visibleMistakes = useMemo<ReviewMistake[]>(
+    () => [...importedMistakes, ...mistakes.map((mistake) => ({ ...mistake }))].slice(0, 6),
+    [importedMistakes],
+  );
 
   function commitHistory(entry: Omit<HistoryEntry, "id" | "reviewedAt">) {
     setState((current) => ({
@@ -188,6 +283,80 @@ function App() {
     setTab("choice");
   }
 
+  function importDailyReviewJson() {
+    setJsonMessage(null);
+    let parsed: unknown;
+    try {
+      parsed = JSON.parse(reviewJson);
+    } catch {
+      setJsonMessage({ kind: "error", text: "JSONの形式を確認してください。" });
+      return;
+    }
+
+    if (!parsed || typeof parsed !== "object") {
+      setJsonMessage({ kind: "error", text: "JSONオブジェクトを貼り付けてください。" });
+      return;
+    }
+
+    const data = parsed as Record<string, unknown>;
+    const date = asText(data.date);
+    const language = asText(data.language);
+    const level = asText(data.level);
+    const wordsRaw = Array.isArray(data.words) ? (data.words as ReviewJsonEntry[]) : null;
+    const phrasesRaw = Array.isArray(data.phrases) ? (data.phrases as ReviewJsonEntry[]) : null;
+    const mistakesRaw = Array.isArray(data.mistakes) ? (data.mistakes as ReviewJsonMistake[]) : null;
+
+    if (!date || !language || !level || !wordsRaw || !phrasesRaw || !mistakesRaw) {
+      setJsonMessage({ kind: "error", text: "date, language, level, words, phrases, mistakes を含めてください。" });
+      return;
+    }
+
+    const words = wordsRaw
+      .map((entry, index) => buildJsonItem(entry, "word", date, index))
+      .filter((item): item is StudyItem => Boolean(item));
+    const phrases = phrasesRaw
+      .map((entry, index) => buildJsonItem(entry, "phrase", date, index))
+      .filter((item): item is StudyItem => Boolean(item));
+    const reviewMistakes = mistakesRaw
+      .map((entry, index) => parseMistake(entry, index, date))
+      .filter((mistake) => mistake.bad || mistake.good || mistake.note);
+
+    if (words.length + phrases.length === 0) {
+      setJsonMessage({ kind: "error", text: "words または phrases にロシア語テキストを入れてください。" });
+      return;
+    }
+
+    const dailyReview: DailyReview = {
+      id: `review-${date}-${stableHash(`${language}-${level}`)}`,
+      date,
+      language,
+      level,
+      words,
+      phrases,
+      mistakes: reviewMistakes,
+      importedAt: new Date().toISOString(),
+    };
+
+    setState((current) => {
+      const existingRu = new Set(current.items.map((item) => item.ru.trim().toLowerCase()));
+      const additions = [...words, ...phrases].filter((item) => !existingRu.has(item.ru.trim().toLowerCase()));
+      const srs = { ...current.srs };
+      additions.forEach((item) => {
+        srs[item.id] = createSrsRecord(item.id);
+      });
+      return {
+        ...current,
+        items: [...additions, ...current.items],
+        srs,
+        dailyReviews: [dailyReview, ...current.dailyReviews.filter((review) => review.id !== dailyReview.id)].slice(0, 90),
+      };
+    });
+    setCardIndex(0);
+    setReviewJson("");
+    setJsonMessage({ kind: "ok", text: `${date}の復習データを保存しました。単語 ${words.length}件、フレーズ ${phrases.length}件。` });
+    setTab("cards");
+  }
+
   function downloadHistory() {
     const blob = new Blob([exportHistory(state.history)], { type: "text/csv;charset=utf-8" });
     const url = URL.createObjectURL(blob);
@@ -262,8 +431,9 @@ function App() {
             <article className="drill-card hero-card">
               <div className="card-head">
                 <span className="label">単語カード</span>
-                <span className="source">{cardIndex + 1} / {state.items.length}</span>
-              </div>
+                  <span className="source">{cardIndex + 1} / {state.items.length}</span>
+                </div>
+              {cardItem.reviewDate && <span className="date-chip">{cardItem.reviewDate}</span>}
               <h2 lang="ru">{cardItem.ru}</h2>
               <p className="meaning-line">JP: {cardItem.ja}</p>
               <p className="meaning-line">EN: {cardItem.en}</p>
@@ -322,15 +492,19 @@ function App() {
             </div>
             <aside className="quiet-panel">
               <div className="label">今日のミス</div>
-              {mistakes.map((mistake) => (
-                <div className="mistake" key={mistake.title}>
-                  <b>{mistake.title}</b>
-                  <p lang="ru">
-                    <X size={16} /> {mistake.bad}
-                  </p>
-                  <p lang="ru">
-                    <Check size={16} /> {mistake.good}
-                  </p>
+              {visibleMistakes.map((mistake, index) => (
+                <div className="mistake" key={`${mistake.date ?? "starter"}-${mistake.title}-${index}`}>
+                  <b>{mistake.date ? `${mistake.date} / ${mistake.title}` : mistake.title}</b>
+                  {mistake.bad && (
+                    <p lang="ru">
+                      <X size={16} /> {mistake.bad}
+                    </p>
+                  )}
+                  {mistake.good && (
+                    <p lang="ru">
+                      <Check size={16} /> {mistake.good}
+                    </p>
+                  )}
                   <small>{mistake.note}</small>
                 </div>
               ))}
@@ -455,22 +629,57 @@ function App() {
         )}
 
         {tab === "conversation" && (
-          <section className="practice-card">
-            <div className="label">会話ログ → 問題生成</div>
-            <textarea
-              value={state.conversationLog}
-              onChange={(event) => setState((current) => ({ ...current, conversationLog: event.target.value }))}
-              placeholder={"例:\nA: Что ты сегодня ел?\nB: Я ел лапшу рамен.\nA: Сегодня было тепло."}
-            />
-            <div className="button-row">
-              <button type="button" onClick={generateFromConversation}>
-                <Sparkles size={18} />
-                問題を生成
-              </button>
+          <section className="two-column">
+            <div className="practice-card">
+              <div className="label">ChatGPT JSON → 復習データ保存</div>
+              <textarea
+                className="json-textarea"
+                value={reviewJson}
+                onChange={(event) => setReviewJson(event.target.value)}
+                placeholder={
+                  '{\n  "date": "2026-07-10",\n  "language": "ru",\n  "level": "A1",\n  "words": [{"ru": "дом", "ja": "家", "en": "house"}],\n  "phrases": [{"ru": "Как дела?", "ja": "元気ですか？"}],\n  "mistakes": [{"bad": "Я играешь.", "good": "Я играю.", "note": "Я は играю"}]\n}'
+                }
+              />
+              <div className="button-row">
+                <button type="button" onClick={importDailyReviewJson}>
+                  <Download size={18} />
+                  JSONを保存
+                </button>
+              </div>
+              {jsonMessage && <div className={`answer-box ${jsonMessage.kind}`}>{jsonMessage.text}</div>}
+              <p className="hint-text">
+                `date`, `language`, `level`, `words`, `phrases`, `mistakes` を含むJSONを貼り付けます。保存後、単語とフレーズはカード・選択・音声練習に追加されます。
+              </p>
+              {state.dailyReviews.length > 0 && (
+                <div className="review-list">
+                  {state.dailyReviews.slice(0, 8).map((review) => (
+                    <div className="schedule-row" key={review.id}>
+                      <span>
+                        {review.date} / {review.level}
+                      </span>
+                      <b>{review.words.length + review.phrases.length}件</b>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
-            <p className="hint-text">
-              キリル文字の表現を抽出し、重複を避けてカードとクイズに追加します。翻訳は後からカード側で確認してください。
-            </p>
+            <div className="practice-card">
+              <div className="label">会話ログ → 問題生成</div>
+              <textarea
+                value={state.conversationLog}
+                onChange={(event) => setState((current) => ({ ...current, conversationLog: event.target.value }))}
+                placeholder={"例:\nA: Что ты сегодня ел?\nB: Я ел лапшу рамен.\nA: Сегодня было тепло."}
+              />
+              <div className="button-row">
+                <button type="button" onClick={generateFromConversation}>
+                  <Sparkles size={18} />
+                  問題を生成
+                </button>
+              </div>
+              <p className="hint-text">
+                キリル文字の表現を抽出し、重複を避けてカードとクイズに追加します。翻訳は後からカード側で確認してください。
+              </p>
+            </div>
           </section>
         )}
 

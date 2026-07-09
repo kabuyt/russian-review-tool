@@ -30,6 +30,7 @@ function normalizeState(state: Partial<StoredState>): StoredState {
     srs,
     history: state.history ?? [],
     conversationLog: state.conversationLog ?? "",
+    dailyReviews: state.dailyReviews ?? [],
   };
 }
 

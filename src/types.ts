@@ -5,8 +5,29 @@ export type StudyItem = {
   ru: string;
   ja: string;
   en: string;
-  source: "starter" | "conversation";
+  source: "starter" | "conversation" | "json";
   createdAt: string;
+  reviewDate?: string;
+  itemType?: "word" | "phrase";
+};
+
+export type ReviewMistake = {
+  title: string;
+  bad: string;
+  good: string;
+  note: string;
+  date?: string;
+};
+
+export type DailyReview = {
+  id: string;
+  date: string;
+  language: string;
+  level: string;
+  words: StudyItem[];
+  phrases: StudyItem[];
+  mistakes: ReviewMistake[];
+  importedAt: string;
 };
 
 export type QuizItem = {
@@ -42,4 +63,5 @@ export type StoredState = {
   srs: Record<string, SrsRecord>;
   history: HistoryEntry[];
   conversationLog: string;
+  dailyReviews: DailyReview[];
 };
