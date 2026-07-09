@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Russian Review">
+  <rect width="512" height="512" rx="96" fill="#f6f4ed"/>
+  <path d="M96 132c0-24 19-43 43-43h235c24 0 43 19 43 43v248c0 24-19 43-43 43H139c-24 0-43-19-43-43z" fill="#315f72"/>
+  <path d="M139 89h235c24 0 43 19 43 43v36H96v-36c0-24 19-43 43-43z" fill="#8b5e34"/>
+  <path d="M151 229h210M151 284h164M151 339h210" stroke="#fffdf8" stroke-width="28" stroke-linecap="round"/>
+  <circle cx="380" cy="120" r="62" fill="#f6f4ed"/>
+  <text x="380" y="144" text-anchor="middle" font-family="Arial, sans-serif" font-size="72" font-weight="800" fill="#315f72">Я</text>
+</svg>
