@@ -488,6 +488,18 @@ main {
   white-space: nowrap;
 }
 
+.schedule-list {
+  display: grid;
+}
+
+.compact-schedule {
+  margin-top: 6px;
+}
+
+.compact-schedule .schedule-row:last-child {
+  border-bottom: 0;
+}
+
 .empty-state {
   display: grid;
   place-items: center;

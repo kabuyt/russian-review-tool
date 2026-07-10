@@ -1,4 +1,4 @@
-export type TabId = "cards" | "choice" | "listen" | "speak" | "wrong" | "srs" | "conversation" | "history";
+export type TabId = "cards" | "choice" | "listen" | "speak" | "wrong" | "conversation" | "history";
 
 export type StudyItem = {
   id: string;
