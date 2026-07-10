@@ -79,6 +79,26 @@ button.bad {
   background: var(--bad);
 }
 
+button.srs-again {
+  background: #b83b3b;
+  color: #fff;
+}
+
+button.srs-hard {
+  background: #f4c35d;
+  color: #33220a;
+}
+
+button.srs-good {
+  background: #1e7a4f;
+  color: #fff;
+}
+
+button.srs-easy {
+  background: #315f72;
+  color: #fff;
+}
+
 textarea {
   width: 100%;
   border: 1px solid var(--line);
@@ -476,6 +496,10 @@ main {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 8px;
+}
+
+.grade-grid button {
+  min-height: 62px;
 }
 
 .schedule-row {

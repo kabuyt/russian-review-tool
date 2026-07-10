@@ -238,9 +238,9 @@ function App() {
   function gradeCard(item: StudyItem, quality: "again" | "hard" | "good" | "easy") {
     const label = {
       again: "もう一回",
-      hard: "むずかしい",
-      good: "できた",
-      easy: "簡単",
+      hard: "あやしい",
+      good: "覚えた",
+      easy: "余裕",
     }[quality];
     gradeItem(item, quality, "card SRS review", label);
     setCardIndex((index) => (index + 1) % state.items.length);
@@ -448,17 +448,17 @@ function App() {
                 音声を聞く
               </button>
               <div className="grade-grid">
-                <button className="bad" type="button" onClick={() => gradeCard(cardItem, "again")}>
+                <button className="srs-again" type="button" onClick={() => gradeCard(cardItem, "again")}>
                   もう一回
                 </button>
-                <button className="ghost" type="button" onClick={() => gradeCard(cardItem, "hard")}>
-                  むずかしい
+                <button className="srs-hard" type="button" onClick={() => gradeCard(cardItem, "hard")}>
+                  あやしい
                 </button>
-                <button className="good" type="button" onClick={() => gradeCard(cardItem, "good")}>
-                  できた
+                <button className="srs-good" type="button" onClick={() => gradeCard(cardItem, "good")}>
+                  覚えた
                 </button>
-                <button type="button" onClick={() => gradeCard(cardItem, "easy")}>
-                  簡単
+                <button className="srs-easy" type="button" onClick={() => gradeCard(cardItem, "easy")}>
+                  余裕
                 </button>
               </div>
             </article>
