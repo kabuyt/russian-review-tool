@@ -1,6 +1,7 @@
-import type { QuizItem, StudyItem } from "./types";
+import type { QuizItem, StudyItem, TargetLanguage } from "./types";
 
 const cyrillicPattern = /[А-Яа-яЁё][А-Яа-яЁё0-9 ,.!?'"«»:-]{1,}/g;
+const vietnamesePattern = /[A-Za-zÀ-ỹĐđ][A-Za-zÀ-ỹĐđ0-9 ,.!?'"-]{1,}/g;
 
 export function normalizeAnswer(value: string) {
   return value
@@ -11,7 +12,11 @@ export function normalizeAnswer(value: string) {
     .replace(/\s+/g, " ");
 }
 
-export function speakRussian(text: string) {
+export function speechLang(language: TargetLanguage) {
+  return language === "vi" ? "vi-VN" : "ru-RU";
+}
+
+export function speakTargetText(text: string, language: TargetLanguage) {
   if (!("speechSynthesis" in window)) {
     globalThis.alert("このブラウザは音声読み上げに対応していません。");
     return;
@@ -19,18 +24,19 @@ export function speakRussian(text: string) {
 
   const utterance = new SpeechSynthesisUtterance(text);
   const voices = window.speechSynthesis.getVoices();
-  utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith("ru")) ?? null;
-  utterance.lang = "ru-RU";
+  const lang = speechLang(language);
+  utterance.voice = voices.find((voice) => voice.lang.toLowerCase().startsWith(language)) ?? null;
+  utterance.lang = lang;
   utterance.rate = 0.75;
   utterance.pitch = 1;
   window.speechSynthesis.cancel();
   window.speechSynthesis.speak(utterance);
 }
 
-export function extractRussianPhrases(log: string, knownItems: StudyItem[]): StudyItem[] {
+export function extractTargetPhrases(log: string, knownItems: StudyItem[], language: TargetLanguage): StudyItem[] {
   const known = new Set(knownItems.map((item) => normalizeAnswer(item.ru)));
   const seen = new Set<string>();
-  const matches = log.match(cyrillicPattern) ?? [];
+  const matches = log.match(language === "vi" ? vietnamesePattern : cyrillicPattern) ?? [];
 
   return matches
     .map((match) => match.trim().replace(/\s+/g, " "))
@@ -43,12 +49,13 @@ export function extractRussianPhrases(log: string, knownItems: StudyItem[]): Stu
     })
     .slice(0, 24)
     .map((ru, index) => ({
-      id: `conversation-${Date.now()}-${index}`,
+      id: `${language}-conversation-${Date.now()}-${index}`,
       ru,
       ja: "会話ログから追加",
       en: "Generated from conversation log",
       source: "conversation",
       createdAt: new Date().toISOString(),
+      language,
     }));
 }
 

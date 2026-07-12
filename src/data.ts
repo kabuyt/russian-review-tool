@@ -2,7 +2,7 @@ import type { QuizItem, StudyItem } from "./types";
 
 const now = new Date().toISOString();
 
-export const starterItems: StudyItem[] = [
+const russianStarterItems = [
   { ru: "Привет", ja: "こんにちは", en: "Hi" },
   { ru: "Как дела?", ja: "元気ですか？", en: "How are you?" },
   { ru: "А у тебя?", ja: "あなたは？", en: "And you?" },
@@ -23,11 +23,45 @@ export const starterItems: StudyItem[] = [
   { ru: "Обед", ja: "昼ごはん", en: "Lunch" },
   { ru: "Тепло", ja: "暖かいです", en: "Warm, weather" },
   { ru: "Холодно", ja: "寒いです", en: "Cold, weather" },
+];
+
+const vietnameseStarterItems = [
+  { ru: "Xin chào", ja: "こんにちは", en: "Hello" },
+  { ru: "Cảm ơn", ja: "ありがとう", en: "Thank you" },
+  { ru: "Không có gì", ja: "どういたしまして", en: "You're welcome" },
+  { ru: "Tôi là người Nhật.", ja: "私は日本人です", en: "I am Japanese." },
+  { ru: "Tôi học tiếng Việt.", ja: "私はベトナム語を勉強しています", en: "I study Vietnamese." },
+  { ru: "Bạn khỏe không?", ja: "元気ですか？", en: "How are you?" },
+  { ru: "Tôi khỏe.", ja: "元気です", en: "I am fine." },
+  { ru: "Rất vui được gặp bạn.", ja: "お会いできてうれしいです", en: "Nice to meet you." },
+  { ru: "Cái này là gì?", ja: "これは何ですか？", en: "What is this?" },
+  { ru: "Bao nhiêu tiền?", ja: "いくらですか？", en: "How much is it?" },
+  { ru: "Tôi muốn uống cà phê.", ja: "コーヒーを飲みたいです", en: "I want to drink coffee." },
+  { ru: "Tôi ăn phở.", ja: "フォーを食べます", en: "I eat pho." },
+  { ru: "Hôm nay trời nóng.", ja: "今日は暑いです", en: "Today is hot." },
+  { ru: "Ngày mai tôi đi làm.", ja: "明日仕事に行きます", en: "Tomorrow I go to work." },
+  { ru: "Tôi không hiểu.", ja: "わかりません", en: "I don't understand." },
+  { ru: "Nói chậm thôi.", ja: "ゆっくり話してください", en: "Please speak slowly." },
+];
+
+export const starterItems: StudyItem[] = [
+  ...russianStarterItems.map((item, index) => ({
+    ...item,
+    id: `ru-starter-${index + 1}`,
+    source: "starter" as const,
+    createdAt: now,
+    language: "ru" as const,
+  })),
+  ...vietnameseStarterItems.map((item, index) => ({
+    ...item,
+    id: `vi-starter-${index + 1}`,
+    source: "starter" as const,
+    createdAt: now,
+    language: "vi" as const,
+  })),
 ].map((item, index) => ({
   ...item,
-  id: `starter-${index + 1}`,
-  source: "starter",
-  createdAt: now,
+  id: item.id ?? `starter-${index + 1}`,
 }));
 
 export const starterQuizzes: QuizItem[] = [
@@ -58,5 +92,26 @@ export const mistakes = [
     bad: "Сегодня тепла.",
     good: "Сегодня было тепло.",
     note: "天気は тепло。",
+  },
+];
+
+export const vietnameseMistakes = [
+  {
+    title: "ベトナム語ミス 1",
+    bad: "Tôi là Nhật.",
+    good: "Tôi là người Nhật.",
+    note: "国籍は người Nhật。",
+  },
+  {
+    title: "ベトナム語ミス 2",
+    bad: "Tôi học Việt Nam.",
+    good: "Tôi học tiếng Việt.",
+    note: "言語は tiếng Việt。",
+  },
+  {
+    title: "ベトナム語ミス 3",
+    bad: "Bạn khỏe không à?",
+    good: "Bạn khỏe không?",
+    note: "基本の質問は không? で十分。",
   },
 ];

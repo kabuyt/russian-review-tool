@@ -18,7 +18,14 @@ export function createSrsRecord(itemId: string, dueAt = todayIso()): SrsRecord {
 
 function normalizeState(state: Partial<StoredState>): StoredState {
   const byId = new Map<string, StudyItem>();
-  [...starterItems, ...(state.items ?? [])].forEach((item) => byId.set(item.id, item));
+  const seenText = new Set<string>();
+  [...starterItems, ...(state.items ?? [])].forEach((item) => {
+    const normalized = { ...item, language: item.language ?? "ru" };
+    const textKey = `${normalized.language}:${normalized.ru.trim().toLowerCase()}`;
+    if (seenText.has(textKey)) return;
+    seenText.add(textKey);
+    byId.set(normalized.id, normalized);
+  });
   const items = Array.from(byId.values());
   const srs = { ...(state.srs ?? {}) };
   items.forEach((item) => {
@@ -31,6 +38,7 @@ function normalizeState(state: Partial<StoredState>): StoredState {
     history: state.history ?? [],
     conversationLog: state.conversationLog ?? "",
     dailyReviews: state.dailyReviews ?? [],
+    activeLanguage: state.activeLanguage ?? "ru",
   };
 }
 

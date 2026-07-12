@@ -1,4 +1,5 @@
 export type TabId = "cards" | "choice" | "listen" | "speak" | "wrong" | "conversation" | "history";
+export type TargetLanguage = "ru" | "vi";
 
 export type StudyItem = {
   id: string;
@@ -7,6 +8,7 @@ export type StudyItem = {
   en: string;
   source: "starter" | "conversation" | "json";
   createdAt: string;
+  language?: TargetLanguage;
   reviewDate?: string;
   itemType?: "word" | "phrase";
 };
@@ -64,4 +66,5 @@ export type StoredState = {
   history: HistoryEntry[];
   conversationLog: string;
   dailyReviews: DailyReview[];
+  activeLanguage: TargetLanguage;
 };
